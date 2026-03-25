@@ -1,22 +1,16 @@
-import axios from "axios";
-
-const API = "http://localhost:5000/api/auth";
+import API from "./api";
 
 // Register
 export const registerUser = (data) => {
-  return axios.post(`${API}/register`, data);
+  return API.post("/auth/register", data);
 };
 
 // Login
 export const loginUser = (data) => {
-  return axios.post(`${API}/login`, data);
+  return API.post("/auth/login", data);
 };
 
-// Get Profile (Protected)
-export const getProfile = (token) => {
-  return axios.get(`${API}/profile`, {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  });
+// Profile (no token needed now)
+export const getProfile = () => {
+  return API.get("/auth/profile");
 };

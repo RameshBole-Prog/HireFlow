@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { getProfile } from "../services/authService";
 import { useNavigate } from "react-router-dom";
+import Navbar from "../components/Navbar";
 
 function Dashboard() {
   const [user, setUser] = useState(null);
@@ -8,15 +9,8 @@ function Dashboard() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      const token = localStorage.getItem("token");
-
-      if (!token) {
-        navigate("/");
-        return;
-      }
-
       try {
-        const res = await getProfile(token);
+        const res = await getProfile();
         setUser(res.data.user);
       } catch (error) {
         localStorage.removeItem("token");
@@ -25,20 +19,32 @@ function Dashboard() {
     };
 
     fetchProfile();
-  }, []);
+  }, [navigate]);
 
-  return (
-    <div>
-      <h2>Dashboard</h2>
+  if (!user) return <p>Loading...</p>;
+
+
+ return (
+  <div className="min-h-screen bg-gray-100">
+    <Navbar />
+
+    <div className="p-6">
+      <h2 className="text-2xl font-bold mb-4">Dashboard</h2>
 
       {user && (
-        <>
-          <p>Name: {user.name}</p>
-          <p>Email: {user.email}</p>
-        </>
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <p className="mb-2">
+            <strong>Name:</strong> {user.name}
+          </p>
+          <p>
+            <strong>Email:</strong> {user.email}
+          </p>
+        </div>
       )}
     </div>
-  );
+  </div>
+);
+
 }
 
 export default Dashboard;
