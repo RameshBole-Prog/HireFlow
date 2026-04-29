@@ -7,7 +7,7 @@ const jwt = require("jsonwebtoken");
 // @access Public
 const registerUser = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password, role } = req.body;
 
     // 1. Validation
     if (!name || !email || !password) {
@@ -32,7 +32,8 @@ const registerUser = async (req, res) => {
     const user = await User.create({
       name,
       email,
-      password: hashedPassword
+      password: hashedPassword,
+      role: role || "employee", // Default role is employee if not provided
     });
 
     // 5. Response
@@ -83,7 +84,7 @@ const loginUser = async (req, res) => {
 
     // 4. Generate JWT
     const token = jwt.sign(
-      { id: user._id },
+      { id: user._id, role: user.role },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );
@@ -95,7 +96,8 @@ const loginUser = async (req, res) => {
       user: {
         id: user._id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        role: user.role
       }
     });
   } catch (error) {
