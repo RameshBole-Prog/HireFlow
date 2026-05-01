@@ -1,12 +1,19 @@
 import { useEffect, useState } from "react";
 import { getUsers, updateUser, deleteUser } from "../services/userService";
-import Navbar from "../components/Navbar";
 import { FaEdit, FaTrash } from "react-icons/fa";
+import DataTable from "../components/DataTable";
+import Breadcrumb from "../components/Breadcrumb";
 
 function AdminDashboard() {
     const [users, setUsers] = useState([]);
+    const [searchTerm, setSearchTerm] = useState("");
+    const [debouncedSearch, setDebouncedSearch] = useState("");
+    const [currentPage, setCurrentPage] = useState(1);
+    const recordsPerPage = 5;
+
     const [showModal, setShowModal] = useState(false);
     const [selectedUserId, setSelectedUserId] = useState(null);
+
     const [editModal, setEditModal] = useState(false);
     const [editUser, setEditUser] = useState(null);
 
@@ -16,6 +23,7 @@ function AdminDashboard() {
         role: "",
     });
 
+    // 🔹 Fetch Users
     useEffect(() => {
         const fetchUsers = async () => {
             try {
@@ -25,28 +33,45 @@ function AdminDashboard() {
                 console.error(error);
             }
         };
-
         fetchUsers();
     }, []);
 
+    // 🔹 Debounce Search
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setDebouncedSearch(searchTerm);
+            setCurrentPage(1);
+        }, 500);
 
+        return () => clearTimeout(timer);
+    }, [searchTerm]);
+
+    // 🔹 Filter Users
+    const filteredUsers = users.filter((user) =>
+        `${user.name} ${user.email} ${user.role}`
+            .toLowerCase()
+            .includes(debouncedSearch.toLowerCase())
+    );
+
+    // 🔹 Pagination
+    const lastIndex = currentPage * recordsPerPage;
+    const firstIndex = lastIndex - recordsPerPage;
+    const currentRecords = filteredUsers.slice(firstIndex, lastIndex);
+    const totalPages = Math.ceil(filteredUsers.length / recordsPerPage);
+
+    // 🔹 Edit
     const handleEdit = (user) => {
         setEditUser(user);
-
         setFormData({
             name: user.name,
             email: user.email,
             role: user.role,
         });
-
         setEditModal(true);
     };
 
     const handleChange = (e) => {
-        setFormData({
-            ...formData,
-            [e.target.name]: e.target.value,
-        });
+        setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
     const handleUpdate = async () => {
@@ -65,82 +90,116 @@ function AdminDashboard() {
         }
     };
 
-    // 🗑 Open Modal
+    // 🔹 Delete
     const handleDeleteClick = (id) => {
         setSelectedUserId(id);
         setShowModal(true);
     };
 
-    // ❌ Confirm Delete
     const confirmDelete = async () => {
         try {
             await deleteUser(selectedUserId);
-
             setUsers((prev) =>
                 prev.filter((u) => u._id !== selectedUserId)
             );
-
             setShowModal(false);
         } catch (error) {
             console.error(error);
         }
     };
 
+    // 🔹 Table Columns
+    const columns = [
+        { header: "Name", accessor: "name" },
+        { header: "Email", accessor: "email" },
+        {
+            header: "Role",
+            accessor: "role",
+            cell: (user) => (
+                <span className="capitalize">{user.role}</span>
+            ),
+        },
+        {
+            header: "Actions",
+            accessor: "actions",
+            cell: (user) => (
+                <div className="space-x-2">
+                    <button
+                        onClick={() => handleEdit(user)}
+                        className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
+                    >
+                        <FaEdit />
+                    </button>
+
+                    <button
+                        onClick={() => handleDeleteClick(user._id)}
+                        className="bg-red-500 text-white p-2 rounded hover:bg-red-600"
+                    >
+                        <FaTrash />
+                    </button>
+                </div>
+            ),
+        },
+    ];
+
     return (
-        <div className="min-h-screen bg-gray-100">
-            <Navbar />
+        <div className="p-6">
+            {/* Breadcrumb */}
+            <div className="flex justify-between items-center mb-4">
+                <h2 className="text-2xl font-bold">Admin Dashboard</h2>
 
-            <div className="p-6">
-                <h2 className="text-2xl font-bold mb-4">Admin Dashboard</h2>
+                <div className="text-sm text-gray-600">
+                    <Breadcrumb />
+                </div>
+            </div>
+            {/* Search */}
+            <input
+                type="text"
+                placeholder="Search users..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="mb-4 px-4 py-2 border rounded w-64 focus:ring-2 focus:ring-blue-400"
+            />
 
-                <table className="w-full bg-white shadow rounded">
-                    <thead>
-                        <tr className="bg-gray-200">
-                            <th className="p-2">Name</th>
-                            <th>Email</th>
-                            <th>Role</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
+            {/* Table */}
+            <DataTable columns={columns} data={currentRecords} />
 
-                    <tbody>
-                        {users.map((user) => (
-                            <tr key={user._id} className="text-center border-t">
-                                <td className="p-2">{user.name}</td>
-                                <td>{user.email}</td>
-                                <td>{user.role}</td>
+            {/* Pagination */}
+            <div className="flex justify-end mt-4 space-x-2">
+                <button
+                    onClick={() =>
+                        setCurrentPage((prev) => Math.max(prev - 1, 1))
+                    }
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 bg-gray-300 rounded disabled:opacity-50"
+                >
+                    Previous
+                </button>
 
-                                <td className="space-x-3">
-                                    {/* ✏️ Edit */}
-                                    <button
-                                        onClick={() => handleEdit(user)}
-                                        className="bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
-                                    >
-                                        <FaEdit />
-                                    </button>
+                <span className="px-4 py-2">
+                    Page {currentPage} of {totalPages}
+                </span>
 
-                                    {/* 🗑 Delete */}
-                                    <button
-                                        onClick={() => handleDeleteClick(user._id)}
-                                        className="bg-red-500 text-white p-2 rounded hover:bg-red-600"
-                                    >
-                                        <FaTrash />
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+                <button
+                    onClick={() =>
+                        setCurrentPage((prev) =>
+                            Math.min(prev + 1, totalPages)
+                        )
+                    }
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2 bg-gray-300 rounded disabled:opacity-50"
+                >
+                    Next
+                </button>
             </div>
 
-            {/* 🔥 CUSTOM MODAL */}
+            {/* Delete Modal */}
             {showModal && (
                 <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
                     <div className="bg-white p-6 rounded-lg shadow-lg w-80">
                         <h3 className="text-lg font-bold mb-4">
                             Confirm Delete
                         </h3>
-
                         <p className="mb-6">
                             Are you sure you want to delete this user?
                         </p>
@@ -155,7 +214,7 @@ function AdminDashboard() {
 
                             <button
                                 onClick={confirmDelete}
-                                className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                                className="px-4 py-2 bg-red-500 text-white rounded"
                             >
                                 Delete
                             </button>
@@ -164,13 +223,12 @@ function AdminDashboard() {
                 </div>
             )}
 
-            {/* ✏️ EDIT MODAL */}
+            {/* Edit Modal */}
             {editModal && (
                 <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
                     <div className="bg-white p-6 rounded-lg shadow-lg w-96">
                         <h3 className="text-lg font-bold mb-4">Edit User</h3>
 
-                        {/* Name */}
                         <input
                             type="text"
                             name="name"
@@ -179,17 +237,14 @@ function AdminDashboard() {
                             className="w-full mb-3 p-2 border rounded"
                         />
 
-                        {/* Email */}
                         <input
                             type="email"
                             name="email"
                             value={formData.email}
-                            onChange={handleChange}
                             disabled
-                            className="w-full mb-3 p-2 border rounded"
+                            className="w-full mb-3 p-2 border rounded bg-gray-100"
                         />
 
-                        {/* Role */}
                         <select
                             name="role"
                             value={formData.role}
@@ -201,7 +256,6 @@ function AdminDashboard() {
                             <option value="admin">Admin</option>
                         </select>
 
-                        {/* Buttons */}
                         <div className="flex justify-end space-x-3">
                             <button
                                 onClick={() => setEditModal(false)}

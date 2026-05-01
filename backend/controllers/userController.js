@@ -49,4 +49,20 @@ const deleteUser = async (req, res) => {
   }
 };
 
-module.exports = { getAllUsers, updateUser, deleteUser };
+const getUserStats = async (req, res) => {
+  try {
+    const totalUsers = await User.countDocuments();
+    const admins = await User.countDocuments({ role: "admin" });
+    const employees = await User.countDocuments({ role: "employee" });
+
+    res.json({
+      totalUsers,
+      admins,
+      employees,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+module.exports = { getAllUsers, updateUser, deleteUser, getUserStats };
